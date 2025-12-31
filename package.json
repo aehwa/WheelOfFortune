@@ -1,0 +1,17 @@
+{
+  "name": "wheel-of-fortune",
+  "version": "1.0.0",
+  "description": "원판형 결정룰렛 웹페이지",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx serve ."
+  },
+  "keywords": [
+    "wheel",
+    "fortune",
+    "roulette"
+  ],
+  "author": "",
+  "license": "MIT"
+}
+
