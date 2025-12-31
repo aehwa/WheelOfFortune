@@ -3,11 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wheel of Fortune</title>
+    <title>운명의 수레바퀴</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <h1>Wheel of Fortune</h1>
+    <div class="container">
+        <h1 class="title">운명의 수레바퀴</h1>
+        
+        <div class="wheel-container">
+            <div class="wheel-wrapper">
+                <svg class="wheel" id="wheel" viewBox="0 0 400 400">
+                    <!-- 돌림판 섹션들은 JavaScript로 동적 생성 -->
+                </svg>
+                <div class="arrow" id="arrow">▼</div>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <div class="count-control">
+                <button class="count-btn" id="decreaseBtn">-</button>
+                <span class="count-value" id="countValue">1</span>
+                <button class="count-btn" id="increaseBtn">+</button>
+            </div>
+            
+            <div class="option-input">
+                <input type="text" id="optionInput" class="option-name-input" placeholder="소망하는 운명의 선택지">
+                <button class="add-btn" id="addBtn">추가</button>
+            </div>
+        </div>
+    </div>
+    
+    <script src="script.js"></script>
 </body>
 </html>
-
-
