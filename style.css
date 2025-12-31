@@ -79,7 +79,7 @@ body {
 }
 
 .wheel-section text {
-    font-size: 16px;
+    font-size: 14px;
     font-weight: bold;
     fill: white;
     text-anchor: middle;
@@ -177,7 +177,8 @@ body {
 }
 
 .add-btn {
-    padding: 15px 30px;
+    width: 100px;
+    padding: 0;
     background: #A5B5D4;
     color: white;
     border: none;
@@ -186,6 +187,10 @@ body {
     font-weight: bold;
     cursor: pointer;
     transition: all 0.2s;
+    -webkit-tap-highlight-color: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .add-btn:hover {

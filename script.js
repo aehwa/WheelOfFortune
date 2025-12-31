@@ -24,10 +24,19 @@ class WheelOfFortune {
     setupEventListeners() {
         this.increaseBtn.addEventListener('click', () => this.increaseCount());
         this.decreaseBtn.addEventListener('click', () => this.decreaseCount());
-        this.addBtn.addEventListener('click', () => this.addOption());
+        this.addBtn.addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            this.addOption();
+            // 키보드가 내려가지 않도록 포커스 유지
+            this.optionInput.focus();
+        });
         this.optionInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') {
+                e.preventDefault();
                 this.addOption();
+                // 키보드가 내려가지 않도록 포커스 유지
+                this.optionInput.focus();
             }
         });
         
@@ -173,23 +182,23 @@ class WheelOfFortune {
             
             // foreignObject를 사용하여 편집 가능한 텍스트 생성
             const foreignObject = document.createElementNS('http://www.w3.org/2000/svg', 'foreignObject');
-            foreignObject.setAttribute('x', textX - 80);
-            foreignObject.setAttribute('y', textY - 15);
-            foreignObject.setAttribute('width', '160');
-            foreignObject.setAttribute('height', '30');
+            foreignObject.setAttribute('x', textX - 50);
+            foreignObject.setAttribute('y', textY - 12);
+            foreignObject.setAttribute('width', '100');
+            foreignObject.setAttribute('height', '24');
             foreignObject.setAttribute('pointer-events', 'none');
             
             const textInput = document.createElement('input');
             textInput.type = 'text';
             textInput.value = this.options[i] || '';
-            textInput.placeholder = '운명의 선택지';
+            textInput.placeholder = '선택지';
             textInput.className = 'wheel-text-input';
             textInput.dataset.index = i;
             textInput.style.cssText = `
                 width: 100%;
                 height: 100%;
                 color: white;
-                font-size: 16px;
+                font-size: 20px;
                 font-weight: bold;
                 text-align: center;
                 background: transparent;
@@ -209,7 +218,7 @@ class WheelOfFortune {
                 if (!e.target.value) {
                     e.target.style.background = 'rgba(255, 255, 255, 0.1)';
                     e.target.style.border = '1px dashed rgba(255, 255, 255, 0.5)';
-                    e.target.style.borderRadius = '4px';
+                    e.target.style.borderRadius = '2px';
                 }
             });
             
@@ -223,8 +232,8 @@ class WheelOfFortune {
             // 포커스 시 스타일 변경
             textInput.addEventListener('focus', (e) => {
                 e.target.style.background = 'rgba(255, 255, 255, 0.2)';
-                e.target.style.border = '2px solid white';
-                e.target.style.borderRadius = '4px';
+                e.target.style.border = '1px solid white';
+                e.target.style.borderRadius = '2px';
             });
             
             textInput.addEventListener('blur', (e) => {
