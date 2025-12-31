@@ -183,15 +183,15 @@ class WheelOfFortune {
             // foreignObject를 사용하여 편집 가능한 텍스트 생성
             const foreignObject = document.createElementNS('http://www.w3.org/2000/svg', 'foreignObject');
             foreignObject.setAttribute('x', textX - 50);
-            foreignObject.setAttribute('y', textY - 12);
+            foreignObject.setAttribute('y', textY - 20);
             foreignObject.setAttribute('width', '100');
-            foreignObject.setAttribute('height', '24');
+            foreignObject.setAttribute('height', '40');
             foreignObject.setAttribute('pointer-events', 'none');
             
             const textInput = document.createElement('input');
             textInput.type = 'text';
             textInput.value = this.options[i] || '';
-            textInput.placeholder = '선택지';
+            textInput.placeholder = '입력';
             textInput.className = 'wheel-text-input';
             textInput.dataset.index = i;
             textInput.style.cssText = `
