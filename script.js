@@ -11,14 +11,34 @@ class WheelOfFortune {
         this.decreaseBtn = document.getElementById('decreaseBtn');
         this.optionInput = document.getElementById('optionInput');
         this.addBtn = document.getElementById('addBtn');
+        this.resetBtn = document.getElementById('resetBtn');
+        this.shareBtn = document.getElementById('shareBtn');
         
         this.init();
     }
     
     init() {
+        this.loadFromUrl();
         this.updateCountDisplay();
         this.drawWheel();
         this.setupEventListeners();
+    }
+
+    loadFromUrl() {
+        const urlParams = new URLSearchParams(window.location.search);
+        const optionsParam = urlParams.get('options');
+        
+        if (optionsParam) {
+            try {
+                const decodedOptions = decodeURIComponent(optionsParam).split(',');
+                if (decodedOptions.length > 0) {
+                    this.options = decodedOptions;
+                    this.count = this.options.length;
+                }
+            } catch (e) {
+                console.error('URL 파라미터 파싱 오류:', e);
+            }
+        }
     }
     
     setupEventListeners() {
@@ -50,6 +70,12 @@ class WheelOfFortune {
                 this.spinWheel();
             }
         });
+
+        // 초기화 버튼
+        this.resetBtn.addEventListener('click', () => this.resetWheel());
+
+        // 공유 버튼
+        this.shareBtn.addEventListener('click', () => this.shareWheel());
     }
     
     increaseCount() {
@@ -91,7 +117,16 @@ class WheelOfFortune {
             return;
         }
         
-        if (this.options.length < 10) {
+        // 빈 칸이 있는지 확인
+        const emptyIndex = this.options.findIndex(opt => opt === '');
+        
+        if (emptyIndex !== -1) {
+            // 빈 칸이 있으면 해당 위치에 채움
+            this.options[emptyIndex] = optionName;
+            this.drawWheel();
+            this.optionInput.value = '';
+        } else if (this.options.length < 10) {
+            // 빈 칸이 없고 10개 미만이면 새로 추가
             this.options.push(optionName);
             this.count = this.options.length;
             this.updateCountDisplay();
@@ -305,6 +340,36 @@ class WheelOfFortune {
                 alert(`당신의 운명은 ${selectedOption} 입니다.`);
             }
         }, 3000);
+    }
+
+    resetWheel() {
+        if (confirm('돌림판을 초기화 하시겠습니까?')) {
+            this.options = [''];
+            this.count = 1;
+            this.updateCountDisplay();
+            this.drawWheel();
+            this.optionInput.value = '';
+            
+            // URL 파라미터 제거
+            window.history.replaceState({}, document.title, window.location.pathname);
+        }
+    }
+
+    shareWheel() {
+        // 빈 값을 제외한 옵션들만 공유하거나, 혹은 전체 구조를 공유
+        // 여기서는 현재 휠 상태 그대로를 공유하도록 함
+        const optionsString = this.options.join(',');
+        const baseUrl = 'https://aehwa.github.io/WheelOfFortune/';
+        const shareUrl = `${baseUrl}?options=${encodeURIComponent(optionsString)}`;
+
+        // 클립보드 복사
+        navigator.clipboard.writeText(shareUrl).then(() => {
+            alert('공유 URL이 클립보드에 복사되었습니다!\n친구에게 당신의 운명을 공유해보세요.');
+        }).catch(err => {
+            console.error('클립보드 복사 실패:', err);
+            // 폴백: prompt로 보여주기
+            prompt('공유 URL입니다. 복사해서 사용하세요:', shareUrl);
+        });
     }
 }
 
