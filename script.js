@@ -356,11 +356,17 @@ class WheelOfFortune {
     }
 
     shareWheel() {
-        // 빈 값을 제외한 옵션들만 공유하거나, 혹은 전체 구조를 공유
-        // 여기서는 현재 휠 상태 그대로를 공유하도록 함
-        const optionsString = this.options.join(',');
+        // 실제 내용이 있는 옵션들만 추출
+        const validOptions = this.options.filter(opt => opt.trim() !== '');
+        
         const baseUrl = 'https://aehwa.github.io/WheelOfFortune/';
-        const shareUrl = `${baseUrl}?options=${encodeURIComponent(optionsString)}`;
+        let shareUrl = baseUrl;
+
+        if (validOptions.length > 0) {
+            // 내용이 있는 경우에만 파라미터 추가
+            const optionsString = validOptions.join(',');
+            shareUrl += `?options=${encodeURIComponent(optionsString)}`;
+        }
 
         // 클립보드 복사
         navigator.clipboard.writeText(shareUrl).then(() => {
