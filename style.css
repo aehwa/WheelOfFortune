@@ -12,6 +12,8 @@ body {
     justify-content: center;
     align-items: center;
     padding: 20px;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
 }
 
 .container {
@@ -245,6 +247,7 @@ body {
     font-weight: bold;
     cursor: pointer;
     transition: all 0.2s;
+    white-space: nowrap;
 }
 
 .reset-btn {
@@ -280,6 +283,7 @@ body {
     font-size: 16px;
     outline: none;
     transition: border-color 0.2s;
+    min-width: 0;
 }
 
 .option-name-input:focus {
@@ -301,6 +305,7 @@ body {
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0;
 }
 
 .add-btn:hover {
@@ -326,6 +331,10 @@ body {
     .title-input {
         font-size: 1.5rem;
         margin-bottom: 10px;
+    }
+
+    .action-btn {
+        font-size: 13px;
     }
 
     .history-container {
