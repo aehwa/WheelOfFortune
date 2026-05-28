@@ -340,42 +340,41 @@ class WheelOfFortune {
         this.isSpinning = true;
         this.wheel.classList.add('spinning');
         
-        // 랜덤 회전 각도 계산 (최소 3바퀴 이상)
-        const spins = 3 + Math.random() * 2; // 3-5바퀴
+        const spins = 5; // 일관된 회전감을 위해 5바퀴로 고정
         const anglePerSection = 360 / this.count;
         
-        let targetAngle;
+        let finalTargetIndex;
         if (targetIndex !== null) {
-            // 특정 인덱스가 당첨되도록 각도 계산
-            // 섹션의 중앙에 화살표가 오도록 함
-            const sectionCenterAngle = (targetIndex * anglePerSection) + (anglePerSection / 2);
-            // 휠의 0도는 3시 방향이므로, 12시 방향(화살표)에 맞추기 위해 270도 보정
-            // 현재 회전 상태(this.rotation)를 고려하여 목표 각도 설정
-            const currentRotationBase = Math.ceil(this.rotation / 360) * 360;
-            targetAngle = currentRotationBase + (spins * 360) + (360 - sectionCenterAngle);
+            finalTargetIndex = targetIndex;
         } else {
-            // 랜덤 회전
-            const randomExtraAngle = Math.random() * 360;
-            targetAngle = this.rotation + (spins * 360) + randomExtraAngle;
+            // 랜덤일 경우 여기서 당첨 인덱스 먼저 확정
+            finalTargetIndex = Math.floor(Math.random() * this.count);
         }
+
+        // 당첨된 섹션의 중앙 각도 (12시 방향 기준 0도부터 시계방향으로 계산)
+        const sectionCenterAngle = (finalTargetIndex * anglePerSection) + (anglePerSection / 2);
         
-        // 선택될 섹션 계산
-        const finalNormalizedRotation = (360 - (targetAngle % 360)) % 360;
-        const selectedIndex = Math.floor(finalNormalizedRotation / anglePerSection) % this.count;
+        // 현재 회전된 각도에서 다음 목표 각도까지의 차이 계산
+        // 휠이 rotate(N deg) 되면 화살표는 내부적으로 -N 도 위치를 가리킴
+        // 따라서 -N = sectionCenterAngle 이 되게 하려면 N = -sectionCenterAngle
+        // 여기에 바퀴 수(spins)를 더하고 누적 각도를 고려함
+        const currentRotation = this.rotation;
+        const baseRotation = Math.ceil(currentRotation / 360) * 360;
+        const targetAngle = baseRotation + (spins * 360) - sectionCenterAngle;
+        
+        // 결과값 미리 저장
+        this.selectedResult = this.options[finalTargetIndex] || '';
         
         this.rotation = targetAngle;
         this.wheel.style.transform = `rotate(${this.rotation}deg)`;
         
-        // 애니메이션 완료 후
+        // 애니메이션 완료 후 실행
         setTimeout(() => {
             this.isSpinning = false;
             this.wheel.classList.remove('spinning');
             
-            // 선택된 옵션 알림
-            const selectedOption = this.options[selectedIndex] || '';
-            if (selectedOption) {
-                this.selectedResult = selectedOption; // 결과 저장
-                alert(`당신의 운명은 ${selectedOption} 입니다.`);
+            if (this.selectedResult) {
+                alert(`당신의 운명은 ${this.selectedResult} 입니다.`);
             }
         }, 3000);
     }
@@ -432,6 +431,6 @@ class WheelOfFortune {
 
 // 페이지 로드 시 초기화
 document.addEventListener('DOMContentLoaded', () => {
-    new WheelOfFortune();
+    window.wheel = new WheelOfFortune();
 });
 
