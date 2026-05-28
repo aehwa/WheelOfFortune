@@ -14,6 +14,7 @@ class WheelOfFortune {
         this.resetBtn = document.getElementById('resetBtn');
         this.shareBtn = document.getElementById('shareBtn');
         this.titleInput = document.getElementById('titleInput');
+        this.selectedResult = null;
         
         this.init();
     }
@@ -23,6 +24,17 @@ class WheelOfFortune {
         this.updateCountDisplay();
         this.drawWheel();
         this.setupEventListeners();
+
+        // URL에 결과가 있으면 자동 회전
+        const urlParams = new URLSearchParams(window.location.search);
+        const resultParam = urlParams.get('result');
+        if (resultParam) {
+            const resultIndex = this.options.indexOf(decodeURIComponent(resultParam));
+            if (resultIndex !== -1) {
+                // 약간의 지연 후 실행 (브라우저 렌더링 준비 시간)
+                setTimeout(() => this.spinWheel(resultIndex), 500);
+            }
+        }
     }
 
     loadFromUrl() {
@@ -322,7 +334,7 @@ class WheelOfFortune {
     }
     
     
-    spinWheel() {
+    spinWheel(targetIndex = null) {
         if (this.isSpinning) return;
         
         this.isSpinning = true;
@@ -330,15 +342,28 @@ class WheelOfFortune {
         
         // 랜덤 회전 각도 계산 (최소 3바퀴 이상)
         const spins = 3 + Math.random() * 2; // 3-5바퀴
-        const randomAngle = Math.random() * 360;
-        const totalRotation = this.rotation + spins * 360 + randomAngle;
+        const anglePerSection = 360 / this.count;
+        
+        let targetAngle;
+        if (targetIndex !== null) {
+            // 특정 인덱스가 당첨되도록 각도 계산
+            // 섹션의 중앙에 화살표가 오도록 함
+            const sectionCenterAngle = (targetIndex * anglePerSection) + (anglePerSection / 2);
+            // 휠의 0도는 3시 방향이므로, 12시 방향(화살표)에 맞추기 위해 270도 보정
+            // 현재 회전 상태(this.rotation)를 고려하여 목표 각도 설정
+            const currentRotationBase = Math.ceil(this.rotation / 360) * 360;
+            targetAngle = currentRotationBase + (spins * 360) + (360 - sectionCenterAngle);
+        } else {
+            // 랜덤 회전
+            const randomExtraAngle = Math.random() * 360;
+            targetAngle = this.rotation + (spins * 360) + randomExtraAngle;
+        }
         
         // 선택될 섹션 계산
-        const normalizedRotation = (360 - (totalRotation % 360)) % 360;
-        const anglePerSection = 360 / this.count;
-        const selectedIndex = Math.floor(normalizedRotation / anglePerSection);
+        const finalNormalizedRotation = (360 - (targetAngle % 360)) % 360;
+        const selectedIndex = Math.floor((finalNormalizedRotation + 0.5) / anglePerSection) % this.count;
         
-        this.rotation = totalRotation;
+        this.rotation = targetAngle;
         this.wheel.style.transform = `rotate(${this.rotation}deg)`;
         
         // 애니메이션 완료 후
@@ -349,6 +374,7 @@ class WheelOfFortune {
             // 선택된 옵션 알림
             const selectedOption = this.options[selectedIndex] || '';
             if (selectedOption) {
+                this.selectedResult = selectedOption; // 결과 저장
                 alert(`당신의 운명은 ${selectedOption} 입니다.`);
             }
         }, 3000);
@@ -363,6 +389,7 @@ class WheelOfFortune {
             this.optionInput.value = '';
             this.titleInput.value = '운명의 수레바퀴';
             document.title = '운명의 수레바퀴';
+            this.selectedResult = null;
             
             // URL 파라미터 제거
             window.history.replaceState({}, document.title, window.location.pathname);
@@ -383,6 +410,10 @@ class WheelOfFortune {
 
         if (validOptions.length > 0) {
             params.set('options', validOptions.join(','));
+        }
+
+        if (this.selectedResult && validOptions.includes(this.selectedResult)) {
+            params.set('result', this.selectedResult);
         }
 
         const queryString = params.toString();
