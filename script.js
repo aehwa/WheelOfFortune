@@ -13,6 +13,7 @@ class WheelOfFortune {
         this.addBtn = document.getElementById('addBtn');
         this.resetBtn = document.getElementById('resetBtn');
         this.shareBtn = document.getElementById('shareBtn');
+        this.titleInput = document.getElementById('titleInput');
         
         this.init();
     }
@@ -27,7 +28,13 @@ class WheelOfFortune {
     loadFromUrl() {
         const urlParams = new URLSearchParams(window.location.search);
         const optionsParam = urlParams.get('options');
+        const titleParam = urlParams.get('title');
         
+        if (titleParam) {
+            this.titleInput.value = decodeURIComponent(titleParam);
+            document.title = this.titleInput.value;
+        }
+
         if (optionsParam) {
             try {
                 const decodedOptions = decodeURIComponent(optionsParam).split(',');
@@ -76,6 +83,11 @@ class WheelOfFortune {
 
         // 공유 버튼
         this.shareBtn.addEventListener('click', () => this.shareWheel());
+
+        // 제목 입력 시 문서 타이틀 업데이트
+        this.titleInput.addEventListener('input', () => {
+            document.title = this.titleInput.value;
+        });
     }
     
     increaseCount() {
@@ -349,6 +361,8 @@ class WheelOfFortune {
             this.updateCountDisplay();
             this.drawWheel();
             this.optionInput.value = '';
+            this.titleInput.value = '운명의 수레바퀴';
+            document.title = '운명의 수레바퀴';
             
             // URL 파라미터 제거
             window.history.replaceState({}, document.title, window.location.pathname);
@@ -358,15 +372,21 @@ class WheelOfFortune {
     shareWheel() {
         // 실제 내용이 있는 옵션들만 추출
         const validOptions = this.options.filter(opt => opt.trim() !== '');
+        const title = this.titleInput.value.trim();
         
-        const baseUrl = 'https://aehwa.github.io/WheelOfFortune/';
-        let shareUrl = baseUrl;
+        const baseUrl = window.location.origin + window.location.pathname;
+        const params = new URLSearchParams();
+
+        if (title && title !== '운명의 수레바퀴') {
+            params.set('title', title);
+        }
 
         if (validOptions.length > 0) {
-            // 내용이 있는 경우에만 파라미터 추가
-            const optionsString = validOptions.join(',');
-            shareUrl += `?options=${encodeURIComponent(optionsString)}`;
+            params.set('options', validOptions.join(','));
         }
+
+        const queryString = params.toString();
+        const shareUrl = queryString ? `${baseUrl}?${queryString}` : baseUrl;
 
         // 클립보드 복사
         navigator.clipboard.writeText(shareUrl).then(() => {

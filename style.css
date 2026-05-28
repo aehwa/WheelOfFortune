@@ -23,12 +23,23 @@ body {
     width: 100%;
 }
 
-.title {
+.title-input {
+    width: 100%;
     text-align: center;
     color: #333;
     margin-bottom: 40px;
     font-size: 2rem;
     font-weight: bold;
+    border: none;
+    background: transparent;
+    outline: none;
+    cursor: text;
+    transition: background-color 0.2s;
+}
+
+.title-input:focus {
+    background-color: rgba(0, 0, 0, 0.05);
+    border-radius: 10px;
 }
 
 .wheel-container {
@@ -255,7 +266,7 @@ body {
         height: 300px;
     }
     
-    .title {
+    .title-input {
         font-size: 1.5rem;
     }
 }
