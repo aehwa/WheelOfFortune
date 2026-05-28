@@ -14,7 +14,10 @@ class WheelOfFortune {
         this.resetBtn = document.getElementById('resetBtn');
         this.shareBtn = document.getElementById('shareBtn');
         this.titleInput = document.getElementById('titleInput');
+        this.historyList = document.getElementById('historyList');
+        this.historyContainer = document.getElementById('historyContainer');
         this.selectedResult = null;
+        this.history = [];
         
         this.init();
     }
@@ -24,6 +27,7 @@ class WheelOfFortune {
         this.updateCountDisplay();
         this.drawWheel();
         this.setupEventListeners();
+        this.updateHistoryDisplay();
 
         // URL에 결과가 있으면 자동 회전
         const urlParams = new URLSearchParams(window.location.search);
@@ -120,8 +124,11 @@ class WheelOfFortune {
     
     updateCountDisplay() {
         this.countValue.textContent = this.count;
-        this.increaseBtn.disabled = this.count >= 10;
-        this.decreaseBtn.disabled = this.count <= 1;
+        this.increaseBtn.disabled = this.isSpinning || this.count >= 10;
+        this.decreaseBtn.disabled = this.isSpinning || this.count <= 1;
+        
+        // 선택지 구성이 변경되므로 기존 결과 초기화
+        this.selectedResult = null;
         
         // 옵션 개수가 count보다 적으면 빈 옵션 추가
         while (this.options.length < this.count) {
@@ -147,6 +154,7 @@ class WheelOfFortune {
         if (emptyIndex !== -1) {
             // 빈 칸이 있으면 해당 위치에 채움
             this.options[emptyIndex] = optionName;
+            this.selectedResult = null; // 결과 초기화
             this.drawWheel();
             this.optionInput.value = '';
         } else if (this.options.length < 10) {
@@ -300,7 +308,12 @@ class WheelOfFortune {
                 e.target.style.border = 'none';
                 const index = parseInt(e.target.dataset.index);
                 const newValue = e.target.value.trim();
-                this.options[index] = newValue;
+                
+                // 값이 변경되었을 때만 초기화
+                if (this.options[index] !== newValue) {
+                    this.options[index] = newValue;
+                    this.selectedResult = null;
+                }
                 e.target.value = newValue;
             });
             
@@ -329,6 +342,7 @@ class WheelOfFortune {
         const newName = prompt('운명을 입력하세요:', this.options[index]);
         if (newName !== null && newName.trim() !== '') {
             this.options[index] = newName.trim();
+            this.selectedResult = null; // 결과 초기화
             this.drawWheel();
         }
     }
@@ -337,7 +351,15 @@ class WheelOfFortune {
     spinWheel(targetIndex = null) {
         if (this.isSpinning) return;
         
+        // 모든 선택지가 채워져 있는지 확인
+        const allOptionsFilled = this.options.every(opt => opt.trim() !== '');
+        if (!allOptionsFilled) {
+            alert('모든 선택지 칸을 채워주세요! 빈 칸이 있으면 운명을 결정할 수 없습니다.');
+            return;
+        }
+        
         this.isSpinning = true;
+        this.setControlsDisabled(true);
         this.wheel.classList.add('spinning');
         
         const spins = 5; // 일관된 회전감을 위해 5바퀴로 고정
@@ -354,13 +376,17 @@ class WheelOfFortune {
         // 당첨된 섹션의 중앙 각도 (12시 방향 기준 0도부터 시계방향으로 계산)
         const sectionCenterAngle = (finalTargetIndex * anglePerSection) + (anglePerSection / 2);
         
+        // 수동 회전(targetIndex === null)일 때만 랜덤 오프셋 추가 (자연스러운 느낌을 위해)
+        let randomOffset = 0;
+        if (targetIndex === null) {
+            // 섹션 너비의 80% 범위 내에서 랜덤하게 멈춤
+            randomOffset = (Math.random() - 0.5) * (anglePerSection * 0.8);
+        }
+
         // 현재 회전된 각도에서 다음 목표 각도까지의 차이 계산
-        // 휠이 rotate(N deg) 되면 화살표는 내부적으로 -N 도 위치를 가리킴
-        // 따라서 -N = sectionCenterAngle 이 되게 하려면 N = -sectionCenterAngle
-        // 여기에 바퀴 수(spins)를 더하고 누적 각도를 고려함
         const currentRotation = this.rotation;
         const baseRotation = Math.ceil(currentRotation / 360) * 360;
-        const targetAngle = baseRotation + (spins * 360) - sectionCenterAngle;
+        const targetAngle = baseRotation + (spins * 360) - sectionCenterAngle + randomOffset;
         
         // 결과값 미리 저장
         this.selectedResult = this.options[finalTargetIndex] || '';
@@ -371,12 +397,71 @@ class WheelOfFortune {
         // 애니메이션 완료 후 실행
         setTimeout(() => {
             this.isSpinning = false;
+            this.setControlsDisabled(false);
             this.wheel.classList.remove('spinning');
             
             if (this.selectedResult) {
+                this.addHistory(this.selectedResult);
                 alert(`당신의 운명은 ${this.selectedResult} 입니다.`);
             }
         }, 3000);
+    }
+
+    setControlsDisabled(disabled) {
+        this.increaseBtn.disabled = disabled || this.count >= 10;
+        this.decreaseBtn.disabled = disabled || this.count <= 1;
+        this.optionInput.disabled = disabled;
+        this.addBtn.disabled = disabled;
+        this.resetBtn.disabled = disabled;
+        this.shareBtn.disabled = disabled;
+        this.titleInput.disabled = disabled;
+        
+        // 휠과 화살표 클릭 방지
+        this.wheel.style.pointerEvents = disabled ? 'none' : 'auto';
+        this.arrow.style.pointerEvents = disabled ? 'none' : 'auto';
+        
+        // 비활성화 시 시각적 피드백 (opacity 등)
+        const controls = document.querySelector('.controls');
+        const titleInput = document.querySelector('.title-input');
+        if (disabled) {
+            controls.style.opacity = '0.5';
+            titleInput.style.opacity = '0.5';
+        } else {
+            controls.style.opacity = '1';
+            titleInput.style.opacity = '1';
+        }
+    }
+
+    addHistory(result) {
+        this.history.push(result);
+        this.updateHistoryDisplay();
+    }
+
+    updateHistoryDisplay() {
+        this.historyList.innerHTML = '';
+        
+        // 최신순으로 보여주기 위해 배열을 뒤집어서 렌더링
+        const reversedHistory = [...this.history].reverse();
+        
+        reversedHistory.forEach((item, index) => {
+            const li = document.createElement('li');
+            li.className = 'history-item';
+            // 전체 개수에서 차감하여 넘버링 (최신 항목이 큰 번호)
+            const originalIndex = this.history.length - index;
+            li.innerHTML = `<span class="item-num">${originalIndex}.</span> ${item}`;
+            this.historyList.appendChild(li);
+        });
+        
+        // 최신 항목이 상단(또는 왼쪽)에 오므로 스크롤을 항상 처음으로 고정
+        this.historyList.scrollTop = 0;
+        this.historyList.scrollLeft = 0;
+
+        // 히스토리가 없으면 숨기기
+        if (this.history.length === 0) {
+            this.historyContainer.style.display = 'none';
+        } else {
+            this.historyContainer.style.display = 'flex';
+        }
     }
 
     resetWheel() {
@@ -389,6 +474,8 @@ class WheelOfFortune {
             this.titleInput.value = '운명의 수레바퀴';
             document.title = '운명의 수레바퀴';
             this.selectedResult = null;
+            this.history = [];
+            this.updateHistoryDisplay();
             
             // URL 파라미터 제거
             window.history.replaceState({}, document.title, window.location.pathname);
