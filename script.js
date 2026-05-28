@@ -29,7 +29,7 @@ class WheelOfFortune {
         const urlParams = new URLSearchParams(window.location.search);
         const resultParam = urlParams.get('result');
         if (resultParam) {
-            const resultIndex = this.options.indexOf(decodeURIComponent(resultParam));
+            const resultIndex = this.options.indexOf(resultParam);
             if (resultIndex !== -1) {
                 // 약간의 지연 후 실행 (브라우저 렌더링 준비 시간)
                 setTimeout(() => this.spinWheel(resultIndex), 500);
@@ -43,13 +43,13 @@ class WheelOfFortune {
         const titleParam = urlParams.get('title');
         
         if (titleParam) {
-            this.titleInput.value = decodeURIComponent(titleParam);
+            this.titleInput.value = titleParam;
             document.title = this.titleInput.value;
         }
 
         if (optionsParam) {
             try {
-                const decodedOptions = decodeURIComponent(optionsParam).split(',');
+                const decodedOptions = optionsParam.split(',');
                 if (decodedOptions.length > 0) {
                     this.options = decodedOptions;
                     this.count = this.options.length;
@@ -361,7 +361,7 @@ class WheelOfFortune {
         
         // 선택될 섹션 계산
         const finalNormalizedRotation = (360 - (targetAngle % 360)) % 360;
-        const selectedIndex = Math.floor((finalNormalizedRotation + 0.5) / anglePerSection) % this.count;
+        const selectedIndex = Math.floor(finalNormalizedRotation / anglePerSection) % this.count;
         
         this.rotation = targetAngle;
         this.wheel.style.transform = `rotate(${this.rotation}deg)`;
