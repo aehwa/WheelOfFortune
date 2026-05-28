@@ -127,6 +127,9 @@ class WheelOfFortune {
         this.increaseBtn.disabled = this.isSpinning || this.count >= 10;
         this.decreaseBtn.disabled = this.isSpinning || this.count <= 1;
         
+        // 선택지 구성이 변경되므로 기존 결과 초기화
+        this.selectedResult = null;
+        
         // 옵션 개수가 count보다 적으면 빈 옵션 추가
         while (this.options.length < this.count) {
             this.options.push('');
@@ -151,6 +154,7 @@ class WheelOfFortune {
         if (emptyIndex !== -1) {
             // 빈 칸이 있으면 해당 위치에 채움
             this.options[emptyIndex] = optionName;
+            this.selectedResult = null; // 결과 초기화
             this.drawWheel();
             this.optionInput.value = '';
         } else if (this.options.length < 10) {
@@ -304,7 +308,12 @@ class WheelOfFortune {
                 e.target.style.border = 'none';
                 const index = parseInt(e.target.dataset.index);
                 const newValue = e.target.value.trim();
-                this.options[index] = newValue;
+                
+                // 값이 변경되었을 때만 초기화
+                if (this.options[index] !== newValue) {
+                    this.options[index] = newValue;
+                    this.selectedResult = null;
+                }
                 e.target.value = newValue;
             });
             
@@ -333,6 +342,7 @@ class WheelOfFortune {
         const newName = prompt('운명을 입력하세요:', this.options[index]);
         if (newName !== null && newName.trim() !== '') {
             this.options[index] = newName.trim();
+            this.selectedResult = null; // 결과 초기화
             this.drawWheel();
         }
     }
