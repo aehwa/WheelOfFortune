@@ -124,8 +124,8 @@ class WheelOfFortune {
     
     updateCountDisplay() {
         this.countValue.textContent = this.count;
-        this.increaseBtn.disabled = this.count >= 10;
-        this.decreaseBtn.disabled = this.count <= 1;
+        this.increaseBtn.disabled = this.isSpinning || this.count >= 10;
+        this.decreaseBtn.disabled = this.isSpinning || this.count <= 1;
         
         // 옵션 개수가 count보다 적으면 빈 옵션 추가
         while (this.options.length < this.count) {
@@ -341,7 +341,15 @@ class WheelOfFortune {
     spinWheel(targetIndex = null) {
         if (this.isSpinning) return;
         
+        // 모든 선택지가 채워져 있는지 확인
+        const allOptionsFilled = this.options.every(opt => opt.trim() !== '');
+        if (!allOptionsFilled) {
+            alert('모든 선택지 칸을 채워주세요! 빈 칸이 있으면 운명을 결정할 수 없습니다.');
+            return;
+        }
+        
         this.isSpinning = true;
+        this.setControlsDisabled(true);
         this.wheel.classList.add('spinning');
         
         const spins = 5; // 일관된 회전감을 위해 5바퀴로 고정
@@ -379,6 +387,7 @@ class WheelOfFortune {
         // 애니메이션 완료 후 실행
         setTimeout(() => {
             this.isSpinning = false;
+            this.setControlsDisabled(false);
             this.wheel.classList.remove('spinning');
             
             if (this.selectedResult) {
@@ -386,6 +395,31 @@ class WheelOfFortune {
                 alert(`당신의 운명은 ${this.selectedResult} 입니다.`);
             }
         }, 3000);
+    }
+
+    setControlsDisabled(disabled) {
+        this.increaseBtn.disabled = disabled || this.count >= 10;
+        this.decreaseBtn.disabled = disabled || this.count <= 1;
+        this.optionInput.disabled = disabled;
+        this.addBtn.disabled = disabled;
+        this.resetBtn.disabled = disabled;
+        this.shareBtn.disabled = disabled;
+        this.titleInput.disabled = disabled;
+        
+        // 휠과 화살표 클릭 방지
+        this.wheel.style.pointerEvents = disabled ? 'none' : 'auto';
+        this.arrow.style.pointerEvents = disabled ? 'none' : 'auto';
+        
+        // 비활성화 시 시각적 피드백 (opacity 등)
+        const controls = document.querySelector('.controls');
+        const titleInput = document.querySelector('.title-input');
+        if (disabled) {
+            controls.style.opacity = '0.5';
+            titleInput.style.opacity = '0.5';
+        } else {
+            controls.style.opacity = '1';
+            titleInput.style.opacity = '1';
+        }
     }
 
     addHistory(result) {
