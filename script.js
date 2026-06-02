@@ -142,32 +142,53 @@ class WheelOfFortune {
     }
     
     addOption() {
-        const optionName = this.optionInput.value.trim();
-        if (optionName === '') {
+        const inputVal = this.optionInput.value.trim();
+        if (inputVal === '') {
             alert('소망하는 운명을 입력해주세요.');
             return;
         }
-        
-        // 빈 칸이 있는지 확인
-        const emptyIndex = this.options.findIndex(opt => opt === '');
-        
-        if (emptyIndex !== -1) {
-            // 빈 칸이 있으면 해당 위치에 채움
-            this.options[emptyIndex] = optionName;
+
+        // 콤마로 분리하여 배열 생성
+        const newOptions = inputVal.split(',').map(opt => opt.trim()).filter(opt => opt !== '');
+
+        if (newOptions.length === 0) {
+            alert('올바른 운명을 입력해주세요.');
+            return;
+        }
+
+        let addedCount = 0;
+        let limitReached = false;
+
+        for (const optionName of newOptions) {
+            // 빈 칸이 있는지 확인
+            const emptyIndex = this.options.findIndex(opt => opt === '');
+            
+            if (emptyIndex !== -1) {
+                // 빈 칸이 있으면 해당 위치에 채움
+                this.options[emptyIndex] = optionName;
+                addedCount++;
+            } else if (this.options.length < 10) {
+                // 빈 칸이 없고 10개 미만이면 새로 추가
+                this.options.push(optionName);
+                this.count = this.options.length;
+                this.updateCountDisplay();
+                addedCount++;
+            } else {
+                limitReached = true;
+                break;
+            }
+        }
+
+        if (addedCount > 0) {
             this.selectedResult = null; // 결과 초기화
             this.drawWheel();
-            this.optionInput.value = '';
-        } else if (this.options.length < 10) {
-            // 빈 칸이 없고 10개 미만이면 새로 추가
-            this.options.push(optionName);
-            this.count = this.options.length;
-            this.updateCountDisplay();
-            this.drawWheel();
-            this.optionInput.value = '';
-        } else {
-            alert('더 이상의 운명을 추가한다면...\n당신의 운명은 더 이상 변하지 않을 것입니다.');
-            this.optionInput.value = '';
         }
+
+        if (limitReached) {
+            alert('더 이상의 운명을 추가한다면...\n당신의 운명은 더 이상 변하지 않을 것입니다. (최대 10개)');
+        }
+
+        this.optionInput.value = '';
     }
     
     drawWheel() {
