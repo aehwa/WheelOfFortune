@@ -1,3 +1,8 @@
+// Firebase 초기화 (compat 버전)
+// firebaseConfig는 firebase-config.js 파일에서 로드됩니다.
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
 class WheelOfFortune {
     constructor() {
         this.options = [''];
@@ -18,33 +23,64 @@ class WheelOfFortune {
         this.historyContainer = document.getElementById('historyContainer');
         this.selectedResult = null;
         this.history = [];
+        this.currentShareId = null; // 현재 로드된 공유 ID
+        this.lastLoadedData = null; // 로드 시점의 데이터 상태
         
         this.init();
     }
     
-    init() {
-        this.loadFromUrl();
+    async init() {
+        await this.loadFromUrl();
         this.updateCountDisplay();
         this.drawWheel();
         this.setupEventListeners();
         this.updateHistoryDisplay();
-
-        // URL에 결과가 있으면 자동 회전
-        const urlParams = new URLSearchParams(window.location.search);
-        const resultParam = urlParams.get('result');
-        if (resultParam) {
-            const resultIndex = this.options.indexOf(resultParam);
-            if (resultIndex !== -1) {
-                // 약간의 지연 후 실행 (브라우저 렌더링 준비 시간)
-                setTimeout(() => this.spinWheel(resultIndex), 500);
-            }
-        }
     }
 
-    loadFromUrl() {
+    async loadFromUrl() {
         const urlParams = new URLSearchParams(window.location.search);
+        const shareId = urlParams.get('id');
+        
+        // 1. Firestore 공유 ID가 있는 경우 우선 처리
+        if (shareId) {
+            try {
+                const doc = await db.collection('shares').doc(shareId).get();
+                if (doc.exists) {
+                    const data = doc.data();
+                    this.currentShareId = shareId;
+                    this.lastLoadedData = {
+                        title: data.title,
+                        options: [...data.options],
+                        selectedResult: data.selectedResult
+                    };
+
+                    if (data.title) {
+                        this.titleInput.value = data.title;
+                        document.title = data.title;
+                    }
+                    if (data.options && data.options.length > 0) {
+                        this.options = data.options;
+                        this.count = this.options.length;
+                    }
+                    if (data.selectedResult) {
+                        this.selectedResult = data.selectedResult;
+                        // 결과가 있으면 약간의 지연 후 자동 회전
+                        const resultIndex = this.options.indexOf(this.selectedResult);
+                        if (resultIndex !== -1) {
+                            setTimeout(() => this.spinWheel(resultIndex), 800);
+                        }
+                    }
+                    return; // Firestore 데이터를 찾으면 종료
+                }
+            } catch (e) {
+                console.error('Firestore 데이터 로드 오류:', e);
+            }
+        }
+
+        // 2. 레거시 URL 파라미터 (options, title, result) 처리 (하위 호환성 유지)
         const optionsParam = urlParams.get('options');
         const titleParam = urlParams.get('title');
+        const resultParam = urlParams.get('result');
         
         if (titleParam) {
             this.titleInput.value = titleParam;
@@ -60,6 +96,14 @@ class WheelOfFortune {
                 }
             } catch (e) {
                 console.error('URL 파라미터 파싱 오류:', e);
+            }
+        }
+
+        if (resultParam) {
+            const resultIndex = this.options.indexOf(resultParam);
+            if (resultIndex !== -1) {
+                this.selectedResult = resultParam;
+                setTimeout(() => this.spinWheel(resultIndex), 800);
             }
         }
     }
@@ -503,37 +547,95 @@ class WheelOfFortune {
         }
     }
 
-    shareWheel() {
-        // 실제 내용이 있는 옵션들만 추출
+    // 클립보드 복사 (showAlert로 알림 여부 조절)
+    copyToClipboard(text, showAlert = true) {
+        const textArea = document.createElement("textarea");
+        textArea.value = text;
+        textArea.style.position = "fixed";
+        textArea.style.left = "-999999px";
+        textArea.style.top = "-999999px";
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        
+        let successful = false;
+        try {
+            successful = document.execCommand('copy');
+            if (successful && showAlert) {
+                alert('공유 URL이 클립보드에 복사되었습니다!\n친구에게 당신의 운명을 공유해보세요.');
+            }
+        } catch (err) {
+            console.error('복사 실패:', err);
+        }
+        
+        document.body.removeChild(textArea);
+        return successful;
+    }
+
+    async shareWheel() {
         const validOptions = this.options.filter(opt => opt.trim() !== '');
         const title = this.titleInput.value.trim();
         
-        const baseUrl = window.location.origin + window.location.pathname;
-        const params = new URLSearchParams();
+        const currentData = {
+            title: title,
+            options: validOptions,
+            selectedResult: this.selectedResult
+        };
 
-        if (title && title !== '운명의 수레바퀴') {
-            params.set('title', title);
+        // 1. 변경 여부 확인 및 기존 ID 재사용
+        if (this.currentShareId && this.lastLoadedData) {
+            const isUnchanged = 
+                this.lastLoadedData.title === currentData.title &&
+                JSON.stringify(this.lastLoadedData.options) === JSON.stringify(currentData.options) &&
+                this.lastLoadedData.selectedResult === currentData.selectedResult;
+
+            if (isUnchanged) {
+                const shareUrl = `${window.location.origin}${window.location.pathname}?id=${this.currentShareId}`;
+                this.copyToClipboard(shareUrl);
+                return;
+            }
         }
 
-        if (validOptions.length > 0) {
-            params.set('options', validOptions.join(','));
+        // 2. 데이터가 변경되었거나 새로 생성하는 경우
+        // [중요] await 이전에 ID를 먼저 생성하고 복사부터 진행 (브라우저 차단 방지)
+        const docRef = db.collection('shares').doc(); // 로컬에서 즉시 ID 생성
+        const newId = docRef.id;
+        const shareUrl = `${window.location.origin}${window.location.pathname}?id=${newId}`;
+        
+        // 클릭 이벤트 직후에 바로 복사 실행
+        const isCopied = this.copyToClipboard(shareUrl, false);
+
+        // 3. 이제 서버에 저장 (비동기)
+        this.shareBtn.disabled = true;
+        this.shareBtn.textContent = '운명 생성 중...';
+
+        try {
+            await docRef.set({
+                ...currentData,
+                createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            });
+
+            // 상태 업데이트
+            this.currentShareId = newId;
+            this.lastLoadedData = { ...currentData, options: [...currentData.options] };
+
+            if (isCopied) {
+                alert('공유 URL이 클립보드에 복사되었습니다!\n친구에게 당신의 운명을 공유해보세요.');
+            } else {
+                // 혹시라도 위에서 실패했다면 여기서 다시 시도 (프롬프트 폴백 포함)
+                this.copyToClipboard(shareUrl);
+            }
+
+            // 주소창 업데이트
+            window.history.pushState({ id: newId }, title, shareUrl);
+
+        } catch (err) {
+            console.error('공유 실패:', err);
+            alert('데이터 저장에 실패했습니다. 인터넷 연결을 확인해주세요.');
+        } finally {
+            this.shareBtn.disabled = false;
+            this.shareBtn.textContent = '운명 공유하기';
         }
-
-        if (this.selectedResult && validOptions.includes(this.selectedResult)) {
-            params.set('result', this.selectedResult);
-        }
-
-        const queryString = params.toString();
-        const shareUrl = queryString ? `${baseUrl}?${queryString}` : baseUrl;
-
-        // 클립보드 복사
-        navigator.clipboard.writeText(shareUrl).then(() => {
-            alert('공유 URL이 클립보드에 복사되었습니다!\n친구에게 당신의 운명을 공유해보세요.');
-        }).catch(err => {
-            console.error('클립보드 복사 실패:', err);
-            // 폴백: prompt로 보여주기
-            prompt('공유 URL입니다. 복사해서 사용하세요:', shareUrl);
-        });
     }
 }
 
