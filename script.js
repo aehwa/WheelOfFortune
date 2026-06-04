@@ -1,7 +1,13 @@
 // Firebase 초기화 (compat 버전)
 // firebaseConfig는 firebase-config.js 파일에서 로드됩니다.
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
+if (typeof firebaseConfig !== 'undefined' && firebaseConfig.apiKey && firebaseConfig.apiKey !== "YOUR_API_KEY") {
+    firebase.initializeApp(firebaseConfig);
+    window.db = firebase.firestore();
+} else {
+    window.db = null;
+}
+
+const db = window.db; // 기존 코드 호환성 유지
 
 class WheelOfFortune {
     constructor() {
@@ -51,7 +57,8 @@ class WheelOfFortune {
                     this.lastLoadedData = {
                         title: data.title,
                         options: [...data.options],
-                        selectedResult: data.selectedResult
+                        selectedResult: data.selectedResult,
+                        history: data.history ? [...data.history] : []
                     };
 
                     if (data.title) {
@@ -61,6 +68,9 @@ class WheelOfFortune {
                     if (data.options && data.options.length > 0) {
                         this.options = data.options;
                         this.count = this.options.length;
+                    }
+                    if (data.history && Array.isArray(data.history)) {
+                        this.history = data.history;
                     }
                     if (data.selectedResult) {
                         this.selectedResult = data.selectedResult;
@@ -171,8 +181,10 @@ class WheelOfFortune {
         this.increaseBtn.disabled = this.isSpinning || this.count >= 10;
         this.decreaseBtn.disabled = this.isSpinning || this.count <= 1;
         
-        // 선택지 구성이 변경되므로 기존 결과 초기화
+        // 선택지 구성이 변경되므로 기존 결과와 히스토리 초기화
         this.selectedResult = null;
+        this.history = [];
+        this.updateHistoryDisplay();
         
         // 옵션 개수가 count보다 적으면 빈 옵션 추가
         while (this.options.length < this.count) {
@@ -573,61 +585,95 @@ class WheelOfFortune {
     }
 
     async shareWheel() {
+        if (!window.db) {
+            alert('Firebase 설정이 필요합니다. firebase-config.js 파일을 확인해주세요.');
+            return;
+        }
         const validOptions = this.options.filter(opt => opt.trim() !== '');
         const title = this.titleInput.value.trim();
         
         const currentData = {
             title: title,
             options: validOptions,
-            selectedResult: this.selectedResult
+            selectedResult: this.selectedResult,
+            history: [...this.history]
         };
 
-        // 1. 변경 여부 확인 및 기존 ID 재사용
-        if (this.currentShareId && this.lastLoadedData) {
-            const isUnchanged = 
-                this.lastLoadedData.title === currentData.title &&
-                JSON.stringify(this.lastLoadedData.options) === JSON.stringify(currentData.options) &&
-                this.lastLoadedData.selectedResult === currentData.selectedResult;
+        let targetDocRef = null;
+        let isNewDocument = true;
 
-            if (isUnchanged) {
-                const shareUrl = `${window.location.origin}${window.location.pathname}?id=${this.currentShareId}`;
-                this.copyToClipboard(shareUrl);
-                return;
+        // 기존 공유 내역이 있는 경우 데이터 비교
+        if (this.currentShareId && this.lastLoadedData) {
+            const optionsChanged = JSON.stringify(this.lastLoadedData.options) !== JSON.stringify(currentData.options);
+            
+            if (!optionsChanged) {
+                // options가 동일하다면 기존 문서를 업데이트할 준비
+                isNewDocument = false;
+                targetDocRef = db.collection('shares').doc(this.currentShareId);
+
+                // 만약 모든 데이터가 이전과 완전히 동일하다면 저장 없이 종료
+                const isCompletelyUnchanged = 
+                    this.lastLoadedData.title === currentData.title &&
+                    this.lastLoadedData.selectedResult === currentData.selectedResult &&
+                    JSON.stringify(this.lastLoadedData.history) === JSON.stringify(currentData.history);
+
+                if (isCompletelyUnchanged) {
+                    const shareUrl = `${window.location.origin}${window.location.pathname}?id=${this.currentShareId}`;
+                    this.copyToClipboard(shareUrl);
+                    return;
+                }
             }
         }
 
-        // 2. 데이터가 변경되었거나 새로 생성하는 경우
-        // [중요] await 이전에 ID를 먼저 생성하고 복사부터 진행 (브라우저 차단 방지)
-        const docRef = db.collection('shares').doc(); // 로컬에서 즉시 ID 생성
-        const newId = docRef.id;
+        // 새 문서 생성이 필요한 경우 (options가 바뀌었거나 기존 ID가 없는 경우)
+        if (isNewDocument) {
+            targetDocRef = db.collection('shares').doc(); // 로컬에서 즉시 ID 생성
+        }
+
+        const newId = targetDocRef.id;
         const shareUrl = `${window.location.origin}${window.location.pathname}?id=${newId}`;
         
-        // 클릭 이벤트 직후에 바로 복사 실행
+        // 브라우저 차단 방지를 위해 await 이전에 복사부터 실행
         const isCopied = this.copyToClipboard(shareUrl, false);
 
-        // 3. 이제 서버에 저장 (비동기)
         this.shareBtn.disabled = true;
-        this.shareBtn.textContent = '운명 생성 중...';
+        this.shareBtn.textContent = isNewDocument ? '운명 생성 중...' : '운명 기록 중...';
 
         try {
-            await docRef.set({
-                ...currentData,
-                createdAt: firebase.firestore.FieldValue.serverTimestamp()
-            });
+            if (isNewDocument) {
+                // 새 문서 생성
+                await targetDocRef.set({
+                    ...currentData,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+            } else {
+                // 기존 문서 업데이트 (options 제외 항목만 갱신)
+                await targetDocRef.update({
+                    title: currentData.title,
+                    selectedResult: currentData.selectedResult,
+                    history: currentData.history,
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+            }
 
-            // 상태 업데이트
+            // 상태 업데이트 및 주소창 갱신
             this.currentShareId = newId;
-            this.lastLoadedData = { ...currentData, options: [...currentData.options] };
+            this.lastLoadedData = { 
+                ...currentData, 
+                options: [...currentData.options],
+                history: [...currentData.history]
+            };
 
             if (isCopied) {
                 alert('공유 URL이 클립보드에 복사되었습니다!\n친구에게 당신의 운명을 공유해보세요.');
             } else {
-                // 혹시라도 위에서 실패했다면 여기서 다시 시도 (프롬프트 폴백 포함)
                 this.copyToClipboard(shareUrl);
             }
 
-            // 주소창 업데이트
-            window.history.pushState({ id: newId }, title, shareUrl);
+            // 새 문서일 때만 히스토리 상태 추가 (기존 문서 갱신 시에는 URL이 같으므로 불필요)
+            if (isNewDocument) {
+                window.history.pushState({ id: newId }, title, shareUrl);
+            }
 
         } catch (err) {
             console.error('공유 실패:', err);
