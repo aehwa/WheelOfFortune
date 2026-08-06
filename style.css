@@ -103,6 +103,7 @@ body {
 
 .wheel-container {
     display: flex;
+    flex-direction: column;
     justify-content: center;
     align-items: center;
     margin-bottom: 40px;
@@ -137,6 +138,68 @@ body {
     z-index: 10;
     pointer-events: none;
     text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.mode-toggle-btn {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background-color: white;
+    border: 3px solid #f0f0f0;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    font-size: 24px;
+    cursor: pointer;
+    z-index: 20;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    padding: 0;
+}
+
+.mode-toggle-btn:hover {
+    transform: translate(-50%, -50%) scale(1.05);
+    box-shadow: 0 6px 14px rgba(0, 0, 0, 0.25);
+}
+
+.mode-toggle-btn:active {
+    transform: translate(-50%, -50%) scale(0.95);
+}
+
+/* 삭제 모드 시 효과 */
+.wheel-wrapper.delete-mode .wheel {
+    cursor: default;
+}
+
+/* 삭제 모드에서는 텍스트 투명도 조절하여 삭제됨을 암시, 커서를 포인터로 변경 */
+.wheel-wrapper.delete-mode .wheel-text-input {
+    pointer-events: none !important;
+    opacity: 0.4;
+}
+
+.wheel-wrapper.delete-mode .wheel-section {
+    cursor: pointer !important;
+}
+
+.delete-mode-hint {
+    margin-top: 15px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #e53935;
+    background-color: rgba(255, 255, 255, 0.8);
+    padding: 10px 16px;
+    border-radius: 20px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 .wheel-section {
