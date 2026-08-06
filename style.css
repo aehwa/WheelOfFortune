@@ -14,6 +14,7 @@ body {
     padding: 20px;
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
+    overflow-x: hidden;
 }
 
 .container {
@@ -114,6 +115,28 @@ body {
     position: relative;
     width: 400px;
     height: 400px;
+    container-type: inline-size;
+}
+
+.wheel-clipper {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    border-radius: 50%;
+}
+
+.wheel-text-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none; /* 클릭 이벤트를 아래의 SVG로 통과시킴 */
+    transform-origin: center;
+    transition: transform 0.1s linear;
 }
 
 .wheel {
@@ -124,7 +147,7 @@ body {
     cursor: pointer;
 }
 
-.wheel.spinning {
+.wheel.spinning, .wheel-text-overlay.spinning {
     transition: transform 3s cubic-bezier(0.17, 0.67, 0.12, 0.99);
 }
 
@@ -175,10 +198,11 @@ body {
     cursor: default;
 }
 
-/* 삭제 모드에서는 텍스트 투명도 조절하여 삭제됨을 암시, 커서를 포인터로 변경 */
+/* 삭제 모드에서는 텍스트 색상을 반투명하게 변경하여 삭제됨을 암시 (opacity 대신 color 사용 - iOS 렌더링 버그 방지) */
 .wheel-wrapper.delete-mode .wheel-text-input {
     pointer-events: none !important;
-    opacity: 0.4;
+    color: rgba(255, 255, 255, 0.4) !important;
+    text-shadow: 1px 1px 2px rgba(0,0,0,0.2) !important;
 }
 
 .wheel-wrapper.delete-mode .wheel-section {

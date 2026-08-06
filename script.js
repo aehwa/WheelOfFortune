@@ -36,6 +36,7 @@ class WheelOfFortune {
         this.isDeleteMode = false;
         this.modeToggleBtn = document.getElementById('modeToggleBtn');
         this.wheelWrapper = document.querySelector('.wheel-wrapper');
+        this.wheelTextOverlay = document.getElementById('wheelTextOverlay');
         this.deleteModeHint = document.getElementById('deleteModeHint');
         
         this.init();
@@ -293,8 +294,13 @@ class WheelOfFortune {
     }
     
     drawWheel() {
-        // 기존 내용 제거
+        // 기존 섹션 및 텍스트 초기화
         this.wheel.innerHTML = '';
+        if (this.wheelTextOverlay) {
+            this.wheelTextOverlay.innerHTML = '';
+            // 다시 그릴 때 현재 회전 각도 유지
+            this.wheelTextOverlay.style.transform = `rotate(${this.rotation}deg)`;
+        }
         
         const centerX = 200;
         const centerY = 200;
@@ -363,19 +369,30 @@ class WheelOfFortune {
                 path = pathElement;
             }
             
-            // 텍스트 추가 (편집 가능하도록)
+            // 텍스트 추가 (HTML Overlay 사용)
             const textAngle = (i * anglePerSection + anglePerSection / 2 - 90) * Math.PI / 180;
             const textRadius = radius * 0.7;
             const textX = centerX + textRadius * Math.cos(textAngle);
             const textY = centerY + textRadius * Math.sin(textAngle);
             
-            // foreignObject를 사용하여 편집 가능한 텍스트 생성
-            const foreignObject = document.createElementNS('http://www.w3.org/2000/svg', 'foreignObject');
-            foreignObject.setAttribute('x', textX - 50);
-            foreignObject.setAttribute('y', textY - 20);
-            foreignObject.setAttribute('width', '100');
-            foreignObject.setAttribute('height', '40');
-            foreignObject.setAttribute('pointer-events', 'none');
+            let textRotation = (i * anglePerSection + anglePerSection / 2);
+            if (textRotation > 90 && textRotation < 270) {
+                textRotation += 180;
+            }
+            
+            const textWrapper = document.createElement('div');
+            textWrapper.style.cssText = `
+                position: absolute;
+                left: ${(textX / 400) * 100}%;
+                top: ${(textY / 400) * 100}%;
+                width: 25cqw;
+                height: 10cqw;
+                transform: translate(-50%, -50%) rotate(${textRotation}deg);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                pointer-events: none;
+            `;
             
             const textInput = document.createElement('input');
             textInput.type = 'text';
@@ -387,7 +404,7 @@ class WheelOfFortune {
                 width: 100%;
                 height: 100%;
                 color: white;
-                font-size: 20px;
+                font-size: 5cqw;
                 font-weight: bold;
                 text-align: center;
                 background: transparent;
@@ -455,8 +472,10 @@ class WheelOfFortune {
                 e.stopPropagation();
             });
             
-            foreignObject.appendChild(textInput);
-            this.wheel.appendChild(foreignObject);
+            textWrapper.appendChild(textInput);
+            if (this.wheelTextOverlay) {
+                this.wheelTextOverlay.appendChild(textWrapper);
+            }
         }
     }
     
@@ -498,6 +517,7 @@ class WheelOfFortune {
         this.isSpinning = true;
         this.setControlsDisabled(true);
         this.wheel.classList.add('spinning');
+        if (this.wheelTextOverlay) this.wheelTextOverlay.classList.add('spinning');
         
         const spins = 5; // 일관된 회전감을 위해 5바퀴로 고정
         const anglePerSection = 360 / this.count;
@@ -530,12 +550,14 @@ class WheelOfFortune {
         
         this.rotation = targetAngle;
         this.wheel.style.transform = `rotate(${this.rotation}deg)`;
+        if (this.wheelTextOverlay) this.wheelTextOverlay.style.transform = `rotate(${this.rotation}deg)`;
         
-        // 애니메이션 완료 후 실행
+        // 휠과 오버레이가 회전한 후 spinning 클래스 제거 및 결과 표시
         setTimeout(() => {
             this.isSpinning = false;
             this.setControlsDisabled(false);
             this.wheel.classList.remove('spinning');
+            if (this.wheelTextOverlay) this.wheelTextOverlay.classList.remove('spinning');
             
             if (this.selectedResult) {
                 this.addHistory(this.selectedResult);

@@ -44,9 +44,12 @@
         
         <div class="wheel-container">
             <div class="wheel-wrapper">
-                <svg class="wheel" id="wheel" viewBox="0 0 400 400">
-                    <!-- 돌림판 섹션들은 JavaScript로 동적 생성 -->
-                </svg>
+                <div class="wheel-clipper">
+                    <svg class="wheel" id="wheel" viewBox="0 0 400 400">
+                        <!-- 돌림판 섹션들은 JavaScript로 동적 생성 -->
+                    </svg>
+                    <div id="wheelTextOverlay" class="wheel-text-overlay"></div>
+                </div>
                 <div class="arrow" id="arrow">▼</div>
                 <button id="modeToggleBtn" class="mode-toggle-btn" title="삭제 모드">🗑️</button>
             </div>
