@@ -32,6 +32,12 @@ class WheelOfFortune {
         this.currentShareId = null; // 현재 로드된 공유 ID
         this.lastLoadedData = null; // 로드 시점의 데이터 상태
         
+        // 삭제 모드 관련
+        this.isDeleteMode = false;
+        this.modeToggleBtn = document.getElementById('modeToggleBtn');
+        this.wheelWrapper = document.querySelector('.wheel-wrapper');
+        this.deleteModeHint = document.getElementById('deleteModeHint');
+        
         this.init();
     }
     
@@ -140,11 +146,26 @@ class WheelOfFortune {
         // 화살표 클릭 시 회전
         this.arrow.addEventListener('click', () => this.spinWheel());
         
-        // 돌림판 클릭 시 회전 (input 클릭은 제외)
+        // 돌림판 클릭 시 이벤트 처리 (위임)
         this.wheel.addEventListener('click', (e) => {
-            // input이나 foreignObject가 아닌 경우에만 회전
-            if (e.target.tagName !== 'input' && e.target.tagName !== 'foreignObject') {
-                this.spinWheel();
+            if (this.isDeleteMode) {
+                // 삭제 모드: 클릭된 섹션을 찾아서 삭제
+                let target = e.target;
+                while (target && target !== this.wheel) {
+                    if (target.classList && target.classList.contains('wheel-section')) {
+                        const index = parseInt(target.dataset.index);
+                        if (!isNaN(index)) {
+                            this.removeOption(index);
+                        }
+                        return;
+                    }
+                    target = target.parentNode;
+                }
+            } else {
+                // 일반 모드: input이나 foreignObject가 아닌 경우에만 회전
+                if (e.target.tagName.toLowerCase() !== 'input' && e.target.tagName.toLowerCase() !== 'foreignobject') {
+                    this.spinWheel();
+                }
             }
         });
 
@@ -158,6 +179,30 @@ class WheelOfFortune {
         this.titleInput.addEventListener('input', () => {
             document.title = this.titleInput.value;
         });
+        
+        // 삭제 모드 토글
+        if (this.modeToggleBtn) {
+            this.modeToggleBtn.addEventListener('click', () => this.toggleDeleteMode());
+        }
+    }
+    
+    toggleDeleteMode() {
+        this.isDeleteMode = !this.isDeleteMode;
+        
+        if (this.isDeleteMode) {
+            this.modeToggleBtn.innerHTML = '✅';
+            this.modeToggleBtn.title = '완료';
+            this.wheelWrapper.classList.add('delete-mode');
+            this.setControlsDisabled(true);
+            this.modeToggleBtn.disabled = false; // 중앙 토글 버튼은 활성화 유지
+            if (this.deleteModeHint) this.deleteModeHint.style.display = 'block';
+        } else {
+            this.modeToggleBtn.innerHTML = '🗑️';
+            this.modeToggleBtn.title = '삭제 모드';
+            this.wheelWrapper.classList.remove('delete-mode');
+            this.setControlsDisabled(false);
+            if (this.deleteModeHint) this.deleteModeHint.style.display = 'none';
+        }
     }
     
     increaseCount() {
@@ -405,7 +450,7 @@ class WheelOfFortune {
                 }
             });
             
-            // 클릭 이벤트 전파 방지
+            // 클릭 이벤트 전파 방지 (일반 모드 시 텍스트 클릭하면 회전 차단)
             textInput.addEventListener('click', (e) => {
                 e.stopPropagation();
             });
@@ -416,6 +461,7 @@ class WheelOfFortune {
     }
     
     editOptionDirectly(index, event) {
+        if (this.isDeleteMode) return; // 삭제 모드일 때는 편집 불가
         const newName = prompt('운명을 입력하세요:', this.options[index]);
         if (newName !== null && newName.trim() !== '') {
             this.options[index] = newName.trim();
@@ -424,9 +470,23 @@ class WheelOfFortune {
         }
     }
     
+    removeOption(index) {
+        if (this.count > 1) {
+            this.options.splice(index, 1);
+            this.count--;
+            this.updateCountDisplay();
+            this.drawWheel();
+        } else {
+            this.options[0] = '';
+            this.selectedResult = null;
+            this.history = [];
+            this.updateHistoryDisplay();
+            this.drawWheel();
+        }
+    }
     
     spinWheel(targetIndex = null) {
-        if (this.isSpinning) return;
+        if (this.isSpinning || this.isDeleteMode) return; // 삭제 모드일 때 회전 방지
         
         // 모든 선택지가 채워져 있는지 확인
         const allOptionsFilled = this.options.every(opt => opt.trim() !== '');
@@ -493,8 +553,14 @@ class WheelOfFortune {
         this.shareBtn.disabled = disabled;
         this.titleInput.disabled = disabled;
         
-        // 휠과 화살표 클릭 방지
-        this.wheel.style.pointerEvents = disabled ? 'none' : 'auto';
+        // 휠과 화살표 클릭 방지 (단, 삭제 모드일 때는 휠 클릭이 가능해야 함)
+        const isSpinDisable = disabled && !this.isDeleteMode;
+        
+        if (this.modeToggleBtn) {
+            this.modeToggleBtn.disabled = isSpinDisable;
+        }
+        
+        this.wheel.style.pointerEvents = isSpinDisable ? 'none' : 'auto';
         this.arrow.style.pointerEvents = disabled ? 'none' : 'auto';
         
         // 비활성화 시 시각적 피드백 (opacity 등)
@@ -503,9 +569,11 @@ class WheelOfFortune {
         if (disabled) {
             controls.style.opacity = '0.5';
             titleInput.style.opacity = '0.5';
+            if (this.modeToggleBtn) this.modeToggleBtn.style.opacity = isSpinDisable ? '0.5' : '1';
         } else {
             controls.style.opacity = '1';
             titleInput.style.opacity = '1';
+            if (this.modeToggleBtn) this.modeToggleBtn.style.opacity = '1';
         }
     }
 
